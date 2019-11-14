@@ -13,28 +13,31 @@ class Camera():
         rospy.loginfo('Cam test node started')
         #cameraNode parameters
         self.blob_detected = False
-        self.minBlobWidth = 150
+        self.minBlobWidth = 120
         #subscribe to camera image
         self.bridge = cv_bridge.CvBridge()
         self.sub = rospy.Subscriber('/image_raw', sensor_msgs.msg.Image, self.run)
         #publisher blob detected
         self.pub = rospy.Publisher('blob_detected', Bool, queue_size=10)
         self.rate = rospy.Rate(2)
-
         rospy.spin() 
+        #publish false on init
+        self.pub.publish(False)
+        
 
     def run(self, image):
         #get frame from robo
         frame = self.bridge.imgmsg_to_cv2(image, desired_encoding='bgr8')
         #filter image and detect blob
         filteredImage = self.filterImage(frame)
-        self.blob_detected = self.detectBlob(filteredImage, len(frame), len(frame[0]), [-1] )
+        tempBlopDetected = self.detectBlob(filteredImage, len(frame), len(frame[0]), [-1] )
         #print and show image
-            #print "blob_detected: " + str(self.blob_detected) 
-            #cv2.imshow('img', filteredImage) 
+        #print "blob_detected: " + str(self.blob_detected) 
+        #cv2.imshow('img', filteredImage) 
         #publish
-        if not rospy.is_shutdown():
-            self.pub.publish(self.blob_detected)
+        if not rospy.is_shutdown() and self.blob_detected != tempBlopDetected:
+            self.pub.publish(tempBlopDetected)
+            self.blob_detected = tempBlopDetected
         else:
             self.rate.sleep()
         cv2.waitKey(5)
