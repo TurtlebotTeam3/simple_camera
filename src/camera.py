@@ -20,9 +20,9 @@ class Camera():
         #publisher blob detected
         self.pub = rospy.Publisher('blob_detected', Bool, queue_size=10)
         self.rate = rospy.Rate(2)
-        rospy.spin() 
         #publish false on init
         self.pub.publish(False)
+        rospy.spin() 
         
 
     def run(self, image):
@@ -38,9 +38,7 @@ class Camera():
         if not rospy.is_shutdown() and self.blob_detected != tempBlopDetected:
             self.pub.publish(tempBlopDetected)
             self.blob_detected = tempBlopDetected
-        else:
-            self.rate.sleep()
-        cv2.waitKey(5)
+        cv2.waitKey(10)
 
     def filterImage(self, frame):
         #convert to hsv image
