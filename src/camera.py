@@ -29,11 +29,12 @@ class Camera():
         #get frame from robo
         frame = self.bridge.imgmsg_to_cv2(image, desired_encoding='bgr8')
         #filter image and detect blob
+        cv2.imshow('img1', frame) 
         filteredImage = self.filterImage(frame)
         tempBlopDetected = self.detectBlob(filteredImage, len(frame), len(frame[0]), [-1] )
         #print and show image
-        #print "blob_detected: " + str(self.blob_detected) 
-        #cv2.imshow('img', filteredImage) 
+        print "blob_detected: " + str(self.blob_detected) 
+        cv2.imshow('img2', filteredImage) 
         #publish
         if not rospy.is_shutdown() and self.blob_detected != tempBlopDetected:
             self.pub.publish(tempBlopDetected)
@@ -43,16 +44,25 @@ class Camera():
     def filterImage(self, frame):
         #convert to hsv image
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) 
-         #lower mask red
-        lower_red = np.array([0, 50, 50])
-        upper_red = np.array([10, 255, 255])
-        mask0 = cv2.inRange(hsv, lower_red, upper_red)
-        #upper mask red
-        lower_red = np.array([170, 50, 50])
-        upper_red = np.array([180, 255, 255])
-        mask1 = cv2.inRange(hsv, lower_red, upper_red)
-        #join my masks for upper and lower red
-        mask = mask0 + mask1
+        #red
+            #lower mask red
+            #lower_red = np.array([0, 50, 50])
+            #upper_red = np.array([10, 255, 255])
+            #mask0 = cv2.inRange(hsv, lower_red, upper_red)
+            #upper mask red
+            #lower_red = np.array([170, 50, 50])
+            #upper_red = np.array([180, 255, 255])
+            #mask1 = cv2.inRange(hsv, lower_red, upper_red)
+            #join my masks for upper and lower red
+            #mask = mask0 + mask1
+        #green
+        lowerBound = np.array([50, 50, 10],np.uint8)
+        upperBound = np.array([90, 255, 255],np.uint8)
+       
+        mask = cv2.inRange(hsv, lowerBound, upperBound)
+        #cv2.imwrite('img.png',frame)
+        #cv2.imshow('img3', mask)
+        
         #bitwise-not mask and original image
         res = cv2.bitwise_not(mask)
         return res 
