@@ -5,18 +5,25 @@ import sensor_msgs.msg
 import numpy as np
 import cv2
 import cv_bridge
+from PIL import Image as I
 
 class Camera(): 
 
     def __init__(self):
         rospy.init_node('CameraNode')
         rospy.loginfo('Cam test node started')
+        self.COLOR = np.array([110,50,50])
+
+        self.center = 0
+        self.blob_x = 0
+        self.blob_y = 0
+
         #cameraNode parameters
         self.blob_detected = False
-        self.minBlobWidth = 120
+        self.minBlobWidth = 80
         #subscribe to camera image
         self.bridge = cv_bridge.CvBridge()
-        self.sub = rospy.Subscriber('/image_raw', sensor_msgs.msg.Image, self.run)
+        self.sub = rospy.Subscriber('/raspicam_node/image/compressed', sensor_msgs.msg.CompressedImage, self.run)
         #publisher blob detected
         self.pub = rospy.Publisher('blob_detected', Bool, queue_size=10)
         self.rate = rospy.Rate(2)
@@ -27,18 +34,20 @@ class Camera():
 
     def run(self, image):
         #get frame from robo
-        frame = self.bridge.imgmsg_to_cv2(image, desired_encoding='bgr8')
+        frame = self.bridge.compressed_imgmsg_to_cv2(image, desired_encoding='bgr8')
         #filter image and detect blob
-        cv2.imshow('img1', frame) 
-        filteredImage = self.filterImage(frame)
-        tempBlopDetected = self.detectBlob(filteredImage, len(frame), len(frame[0]), [-1] )
+        #cv2.imshow('img1', frame) 
+        filteretImage = self.filterImage(frame)
+
+        #tempBlopDetected = self.detectBlob(filteretImage, len(frame), len(frame[0]), [-1] )
         #print and show image
-        print "blob_detected: " + str(self.blob_detected) 
-        cv2.imshow('img2', filteredImage) 
+        #print "blob_detected: " + str(self.blob_detected) + " x: " + str(self.blob_x) + " y: " + str(self.blob_y) + " Center: " + str(self.center)
+        #cv2.circle(filteretImage, (self.blob_y, self.blob_x), self.minBlobWidth, self.COLOR, thickness=5, lineType=8, shift=0)
+        cv2.imshow('img2', filteretImage) 
         #publish
-        if not rospy.is_shutdown() and self.blob_detected != tempBlopDetected:
-            self.pub.publish(tempBlopDetected)
-            self.blob_detected = tempBlopDetected
+        #if not rospy.is_shutdown() and self.blob_detected != tempBlopDetected:
+        #    self.pub.publish(tempBlopDetected)
+        #    self.blob_detected = tempBlopDetected
         cv2.waitKey(10)
 
     def filterImage(self, frame):
@@ -65,6 +74,7 @@ class Camera():
         
         #bitwise-not mask and original image
         res = cv2.bitwise_not(mask)
+
         return res 
 
     def detectBlob(self, image, resolX, resolY, xCenter):
@@ -84,14 +94,21 @@ class Camera():
                     if blobwidth >= minBlobWidth:
                         xCenter[0] = xStart + blobwidth/2
                         #print('blob detected at: ', xStart, y, ' with center at: ', xCenter[0])
+                        self.blob_x = xStart
+                        self.blob_y = y
+                        self.center = xCenter[0]
                         return True
                     elif blobwidth > 0:
                         blobwidth = 0
             if blobwidth >= minBlobWidth:
                 xCenter[0] = xStart + blobwidth/2
+                self.blob_x = xStart
+                self.blob_y = y
+                self.center = xCenter[0]
                 #print('blob detected at: ', xStart, y, ' with center at: ', xCenter[0])
                 return True
         return False
+
 
 if __name__ == '__main__':
 	Camera()
