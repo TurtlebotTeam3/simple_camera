@@ -6,6 +6,10 @@ import numpy as np
 import cv2
 import cv_bridge
 from PIL import Image as I
+from tf.transformations import euler_from_quaternion
+from geometry_msgs.msg import PointStamped
+import tf
+from geometry_msgs.msg._Pose import Pose
 
 class Camera(): 
 
@@ -15,7 +19,7 @@ class Camera():
 
         #cameraNode parameters
         self.COLOR = np.array([110,50,50])
-        self.minAreaSize = 2000
+        self.minAreaSize = 200
         #blob parameters
         self.blob_x = 0
         self.blob_y = 0
@@ -34,14 +38,41 @@ class Camera():
         self.blob_msg.blob_y = self.blob_y
         self.pub_blob.publish(self.blob_msg)
 
+        self.pose = Pose()
+        self.pose_subscriber = rospy.Subscriber('/simple_odom_pose', Pose, self._update_pose)
+
         rospy.spin() 
-        
+
+    def _update_pose(self, data):
+		"""
+		Update current pose of robot
+		"""
+		try:
+			self.pose.position.x = data.position.x
+			self.pose.position.y = data.position.y
+			self.pose.position.z = data.position.z
+			self.pose.orientation.x = data.orientation.x 
+			self.pose.orientation.y = data.orientation.y 
+			self.pose.orientation.z = data.orientation.z
+			self.pose.orientation.w = data.orientation.w 
+		except:
+			print "ERROR --> TRANSFORM NOT READY"
+		
+		self.pose.position.x = round(data.position.x, 4)
+		self.pose.position.y = round(data.position.y, 4)
+		self.robot_yaw = self._robot_angle()   
+
+    def _robot_angle(self):
+		orientation_q = self.pose.orientation
+		orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+		(_, _, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
+		return yaw  
         
     def _run(self, image):
         #get frame from robo
         frame = self.bridge.compressed_imgmsg_to_cv2(image, desired_encoding='bgr8') 
         #TODO DELETE
-        #cv2.imwrite('04.jpg',frame)
+        #cv2.imwrite('03-03.jpg',frame)
         #raw_input("stop")
 
         #self._showImage("img2", frame, False)
@@ -58,6 +89,7 @@ class Camera():
             self.blob_msg.blob_x = self.blob_x
             self.blob_msg.blob_y = self.blob_y
             self.pub_blob.publish(self.blob_msg)
+            self._calculatePositionOfTag(self.blob_x, self.blob_y)
         else:
             self.blob_in_front = False
             self.blob_msg.blob_detected = self.blob_in_front
@@ -103,16 +135,58 @@ class Camera():
                 cy = int(M['m01'] / M['m00'])
                 #cv2.circle(im, (cx, cy), 3, 255, -1)
                 #(xcenter, ycenter), (MA, ma), angle = cv2.fitEllipse(best_blob)
-                print "maxarea: " + str(max_area)
-                print "position: " + str((cx, cy))
+                #print "maxarea: " + str(max_area)
+                #print "position: " + str((cx, cy))
                 return int(cx), int(cy)
             else:
-                print "too small"
-                print "maxarea: " + str(max_area)
+                #print "too small"
+                #print "maxarea: " + str(max_area)
                 return 0, 0
         else:
             #print "not found!"
             return 0, 0
+    
+    def _calculatePositionOfTag(self, x, y):
+        H = np.array([[0.230489985832561, 3.57275008588951e-05, -146.602459530058],
+                      [0.00589738679860119, 0.120006465885370, 257.753591375280],
+                      [2.75956230239940e-05 , 0.0172475696150036, 1.0]])
+
+        result = H.dot(np.asarray([x, y, 1]))
+
+        x = result[1] / result[2]
+        y = result[0] / result[2]
+
+        _, _, phi = euler_from_quaternion([self.pose.orientation.x, self.pose.orientation.y, self.pose.orientation.z, self.pose.orientation.w])
+
+        print phi
+        print self.pose.position.x
+        print self.pose.position.y
+        print self.pose.orientation.z
+        print self.pose.orientation.w
+
+        T = np.asarray(
+            [
+                [np.cos(phi), -np.sin(phi), self.pose.position.x],
+                [np.sin(phi), np.cos(phi), self.pose.position.y],
+                [0, 0, 1]
+            ]
+        )
+
+        x, y, z = np.matmul(T, np.asarray([(x/100), (y/100), 1]))
+
+        print "tag at x: " + str(x)
+        print "tag at y: " + str(y)
+        print "tag at z: " + str(z)
+
+        #pt = PointStamped()
+        #pt.header.frame_id = "base_link"
+        #pt.point.x = x
+        #pt.point.y = y
+        #pt.point.z = 1
+
+        #self.marker_publisher.publish(pt)
+
+        return [x, y]
 
 if __name__ == '__main__':
     try:
