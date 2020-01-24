@@ -39,7 +39,11 @@ class Camera():
         
     def _run(self, image):
         #get frame from robo
-        frame = self.bridge.compressed_imgmsg_to_cv2(image, desired_encoding='bgr8')  
+        frame = self.bridge.compressed_imgmsg_to_cv2(image, desired_encoding='bgr8') 
+        #TODO DELETE
+        #cv2.imwrite('04.jpg',frame)
+        #raw_input("stop")
+
         #self._showImage("img2", frame, False)
         #cut the top of the frame to only see 45 cm
         frame = frame[0:720, 0:1280]
