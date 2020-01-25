@@ -14,6 +14,7 @@ from tag_manager.srv import AddTag
 from nav_msgs.msg._OccupancyGrid import OccupancyGrid
 import math
 from std_msgs.msg._Bool import Bool
+import time
 
 class Camera(): 
 
@@ -122,6 +123,7 @@ class Camera():
 
     def _saveTag(self, data):
         if data.data == True:
+            time.sleep(3)
             x_gobal, y_global = self._calculateMapPosOfTag(self.blob_x, self.blob_y)
 
             x_in_map = int(math.floor((x_gobal - self.map_offset_x)/self.map_resolution))
