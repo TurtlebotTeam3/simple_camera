@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import rospy
-#from simple_camera.msg import Blob
+from simple_camera.msg import Blob
 import sensor_msgs.msg
 import numpy as np
 import cv2
@@ -15,6 +15,7 @@ from tag_manager.srv import AddTag
 from nav_msgs.msg._OccupancyGrid import OccupancyGrid
 import math
 from std_msgs.msg._Bool import Bool
+import time
 
 class Camera(): 
 
@@ -40,14 +41,14 @@ class Camera():
         self.bridge = cv_bridge.CvBridge()
         self.sub = rospy.Subscriber('/raspicam_node/image/compressed', sensor_msgs.msg.CompressedImage, self._run)
         #publisher blob detected
-        #self.pub_blob = rospy.Publisher("blob", Blob, queue_size=10)
+        self.pub_blob = rospy.Publisher("blob", Blob, queue_size=10)
         #self.rate = rospy.Rate(20)
         #publish false on init 
-        #self.blob_msg = Blob()
-        #self.blob_msg.blob_detected = self.blob_in_front
-        #self.blob_msg.map_x = 0
-        #self.blob_msg.map_y = 0
-        #self.pub_blob.publish(self.blob_msg)
+        self.blob_msg = Blob()
+        self.blob_msg.blob_detected = self.blob_in_front
+        self.blob_msg.map_x = 0
+        self.blob_msg.map_y = 0
+        self.pub_blob.publish(self.blob_msg)
 
         #service tag_manager
         print "--- wait for check_tag_known service"
@@ -68,6 +69,10 @@ class Camera():
 
         #move_to_goal is paused
         self.pose_subscriber = rospy.Subscriber('/move_to_goal/paused', Bool, self._saveTag)
+
+        self.pub_move_to_tag = rospy.Publisher('move_to_tag_start_driving', Bool, queue_size=10)
+
+        self.sub_move_to_tag = rospy.Subscriber('move_to_tag/reached', Bool, self._goal_reached_callback)
 
         print "--- CAMERA READY ---"
         rospy.spin() 
@@ -120,43 +125,56 @@ class Camera():
             (self.blob_x, self.blob_y) = self._find_center(mask, self.minAreaSize)
             #publish
             if not rospy.is_shutdown() and self.blob_x != 0 and self.blob_y != 0:
-                #self.blob_in_front = True
-                #self.blob_msg.blob_detected = self.blob_in_front                
+                self.blob_in_front = True
+                self.blob_msg.blob_detected = self.blob_in_front
+                self.blob_msg.map_x = self.blob_x
+                self.blob_msg.map_y = self.blob_y
+                self.pub_blob.publish(self.blob_msg)
+                self.blob_msg.blob_detected = self.blob_in_front                
                 if self.call_service == False:
                     self.call_service = True
                     #------------------------------------
                     # send stop
                     #------------------------------------
+
                     self.stop_move_to_goal_publisher.publish(True)
             else:
                 self.call_service = False
-                #self.blob_in_front = False
-                #self.blob_msg.blob_detected = self.blob_in_front
-                #self.blob_msg.map_x = 0
-                #self.blob_msg.map_y = 0
-                #self.pub_blob.publish(self.blob_msg)
+                self.blob_in_front = False
+                self.blob_msg.blob_detected = self.blob_in_front
+                self.blob_msg.map_x = 0
+                self.blob_msg.map_y = 0
+                self.pub_blob.publish(self.blob_msg)
             #show image with centroid
             self._showImage("img1", mask, True)
 
     def _saveTag(self, data):
-        print data
         # wenn stop true
+        if data.data == True:
+            i = 0
+            msg_str = Bool()
+            msg_str = True
+            while i < 2 and not rospy.is_shutdown():
+                self.pub_move_to_tag.publish(msg_str)
+                i = i + 1
+
+            #x_gobal, y_global = self._calculateMapPosOfTag(self.blob_x, self.blob_y)
+            #x_in_map = int(math.floor((x_gobal - self.map_offset_x)/self.map_resolution))
+            #y_in_map = int(math.floor((y_global - self.map_offset_y)/self.map_resolution))
+            #check_service_response = self.tag_manager_check(x_in_map,y_in_map)
+            #if check_service_response.tagKnown.data == False:
+                #add_service_response = self.tag_manager_add(x_in_map,y_in_map)
+                #print add_service_response
+                #print "Added New Tag"
+                #------------------------------------
+                # send start
+                #------------------------------------
+        #self.stop_move_to_goal_publisher.publish(False)
+
+    def _goal_reached_callback(self, data):
         if data == True:
-            x_gobal, y_global = self._calculateMapPosOfTag(self.blob_x, self.blob_y)
-            x_in_map = int(math.floor((x_gobal - self.map_offset_x)/self.map_resolution))
-            y_in_map = int(math.floor((y_global - self.map_offset_y)/self.map_resolution))
-            #self.blob_msg.map_x = x_in_map
-            #self.blob_msg.map_y = y_in_map
-            #self.pub_blob.publish(self.blob_msg)
-            check_service_response = self.tag_manager_check(x_in_map,y_in_map)
-            if check_service_response.tagKnown.data == False:
-                add_service_response = self.tag_manager_add(x_in_map,y_in_map)
-                print add_service_response
-                print "Added New Tag"
-            #------------------------------------
-            # send start
-            #------------------------------------
             self.stop_move_to_goal_publisher.publish(False)
+
         
     def _showImage(self, name, img, centroid):
         #show images
