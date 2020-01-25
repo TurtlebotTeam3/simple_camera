@@ -68,7 +68,7 @@ class Camera():
         self.stop_move_to_goal_publisher = rospy.Publisher('move_to_goal/pause_action', Bool, queue_size=1)
 
         #move_to_goal is paused
-        self.pose_subscriber = rospy.Subscriber('/move_to_goal/paused', Bool, self._saveTag)
+        self.move_to_goal_is_paused_subscriber = rospy.Subscriber('/move_to_goal/paused', Bool, self._saveTag)
 
         self.pub_move_to_tag = rospy.Publisher('move_to_tag_start_driving', Bool, queue_size=10)
 
