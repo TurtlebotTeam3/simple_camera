@@ -15,6 +15,9 @@ from nav_msgs.msg._OccupancyGrid import OccupancyGrid
 import math
 from std_msgs.msg._Bool import Bool
 import time
+from time import gmtime, strftime
+from visualization_msgs.msg import Marker
+from visualization_msgs.msg import MarkerArray
 
 class Camera(): 
 
@@ -108,7 +111,7 @@ class Camera():
             #detect blob if x y == 0 no blob detected
             (self.blob_x, self.blob_y) = self._find_center(mask, self.minAreaSize)
             #publish
-            if not rospy.is_shutdown() and self.blob_x != 0 and self.blob_y != 0:               
+            if not rospy.is_shutdown() and self.blob_x != 0 and self.blob_y != 0:             
                 if self.call_service == False:
                     self.call_service = True
                     #------------------------------------
@@ -123,8 +126,20 @@ class Camera():
 
     def _saveTag(self, data):
         if data.data == True:
-            time.sleep(3)
+        #if data == True:
+            print strftime("%Y-%m-%d %H:%M:%S", gmtime())
+            time.sleep(5)
+            print strftime("%Y-%m-%d %H:%M:%S", gmtime())
             x_gobal, y_global = self._calculateMapPosOfTag(self.blob_x, self.blob_y)
+
+            #print "robo globalx: " + str(self.pose.position.x)
+            #print "robot globaly: " + str(self.pose.position.y)
+            #print "tag globalx: " + str(x_gobal)
+            #print "tag globaly: " + str(y_global)
+            #print "robo in map_ x: " + str(int(math.floor((self.pose.position.x - self.map_offset_x)/self.map_resolution)))
+            #print "robo in map_y: " + str(int(math.floor((self.pose.position.y - self.map_offset_y)/self.map_resolution)))
+            #print "tag in map_ x: " + str(int(math.floor((x_gobal - self.map_offset_x)/self.map_resolution)))
+            #print "tag in map_y: " + str(int(math.floor((y_global - self.map_offset_y)/self.map_resolution)))
 
             x_in_map = int(math.floor((x_gobal - self.map_offset_x)/self.map_resolution))
             y_in_map = int(math.floor((y_global - self.map_offset_y)/self.map_resolution))
@@ -133,7 +148,9 @@ class Camera():
             if check_service_response.tagKnown.data == False:
                 add_service_response = self.tag_manager_add(x_in_map,y_in_map)
                 print add_service_response
-                print "Added New Tag"
+                print "Added New Tag at x:" + str(x_in_map) + " y: " + str(y_in_map)
+            else:
+                print "Already in List"
         #------------------------------------
         # MoveToGoal --> START
         #------------------------------------
@@ -208,6 +225,8 @@ class Camera():
         x, y, _ = np.matmul(T, np.asarray([(x/100), (y/100), 1]))
 
         return [x, y]
+
+
 
 if __name__ == '__main__':
     try:
