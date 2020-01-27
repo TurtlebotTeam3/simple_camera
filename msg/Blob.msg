@@ -1,3 +1,3 @@
 bool blob_detected
-int64 map_x
-int64 map_y
+int64 blob_x
+int64 blob_y
