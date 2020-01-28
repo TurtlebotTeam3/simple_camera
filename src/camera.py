@@ -4,15 +4,16 @@ import sensor_msgs.msg
 import numpy as np
 import cv2
 import cv_bridge
+import tf
+import math
 from PIL import Image as I
 from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import PointStamped
-import tf
 from geometry_msgs.msg._Pose import Pose
 from tag_manager.srv import CheckTagKnown
 from nav_msgs.msg._OccupancyGrid import OccupancyGrid
-import math
 from std_msgs.msg._Bool import Bool
+from simple_camera.msg import Blob
 
 class Camera(): 
 
@@ -47,10 +48,10 @@ class Camera():
         self.pub_blob.publish(self.blob_msg)
 
         #service tag_manager
-        print "--- wait for check_tag_known service"
+        print("--- wait for check_tag_known service")
         rospy.wait_for_service('check_tag_known')
         self.tag_manager_check = rospy.ServiceProxy('check_tag_known', CheckTagKnown)
-        print "--- check_tag_known service ready"
+        print("--- check_tag_known service ready")
 
         #simpel odom
         self.pose = Pose()
