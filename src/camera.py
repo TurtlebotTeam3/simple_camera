@@ -133,7 +133,7 @@ class Camera():
                 self.blob_msg.blob_y = 0
                 self.pub_blob.publish(self.blob_msg)
             #show image with centroid
-            self._showImage("img1", mask, True)
+            #self._showImage("img1", mask, True)
         else:
             print "map not running"
 
