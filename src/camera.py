@@ -6,16 +6,17 @@ import cv2
 import cv_bridge
 import tf
 import math
+
 from PIL import Image as I
 from tf.transformations import euler_from_quaternion
-from geometry_msgs.msg import PointStamped
-from geometry_msgs.msg._Pose import Pose
+from geometry_msgs.msg import PointStamped, Pose
+from nav_msgs.msg import OccupancyGrid, MapMetaData
+from std_msgs.msg import Bool
+
 from tag_manager.srv import CheckTagKnown
-from nav_msgs.msg._OccupancyGrid import OccupancyGrid
-from std_msgs.msg._Bool import Bool
 from simple_camera.msg import Blob
-from simple_camera.srv import EnableBlobDetection, EnableBlobDetectionResponse
-from simple_camera.srv import EnableTagKnownCheck, EnableTagKnownCheckResponse
+from simple_camera.srv import EnableBlobDetection, EnableBlobDetectionResponse, EnableTagKnownCheck, EnableTagKnownCheckResponse
+from simple_odom.msg import CustomPose, PoseConverted
 
 class Camera(): 
 
@@ -28,12 +29,14 @@ class Camera():
         self.blob_x = 0
         self.blob_y = 0
         self.blob_in_front = False
-        self.map_resolution = 0
-        self.map_offset_x = 0
-        self.map_offset_y = 0
-        self.received_map = False
+        
+        self.map_info = MapMetaData()
+        
         self.bridge = cv_bridge.CvBridge()
+        
         self.pose = Pose()
+        self.pose_converted = PoseConverted()
+        
         self.do_blob_detection = True
         self.do_tag_known_check = True
 
@@ -45,9 +48,8 @@ class Camera():
 
         print("--- subscriber ---")
         # --- Subscribers ---
-        self.map_subscriber = rospy.Subscriber('/map', OccupancyGrid, self._map_callback)
         self.camera_subscriber = rospy.Subscriber('/raspicam_node/image/compressed', sensor_msgs.msg.CompressedImage, self._run)
-        self.pose_subscriber = rospy.Subscriber('/simple_odom_pose', Pose, self._update_pose)
+        self.pose_subscriber = rospy.Subscriber('/simple_odom_pose', CustomPose, self._handle_update_pose)
         self.move_to_goal_is_paused_subscriber = rospy.Subscriber('/move_to_goal/paused', Bool, self._move_to_tag)
 
         print("--- service wait ---")
@@ -73,6 +75,10 @@ class Camera():
         print "--- CAMERA READY ---"
         rospy.spin() 
 
+    def _setup(self):
+        map = rospy.wait_for_message('/map', OccupancyGrid)
+        self.map_info = map.info
+
     def _set_blob_detection(self,data):
         """
         Enable or disable the Blob detection
@@ -87,39 +93,18 @@ class Camera():
         self.do_tag_known_check = data.enableTagKnownCheck.data
         return EnableTagKnownCheckResponse()
 
-    def _update_pose(self, data):
-		"""
-		Update current pose of robot
-		"""
-		try:
-			self.pose.position.x = data.position.x
-			self.pose.position.y = data.position.y
-			self.pose.position.z = data.position.z
-			self.pose.orientation.x = data.orientation.x 
-			self.pose.orientation.y = data.orientation.y 
-			self.pose.orientation.z = data.orientation.z
-			self.pose.orientation.w = data.orientation.w 
-		except:
-			print "ERROR --> TRANSFORM NOT READY"
-		
-		self.pose.position.x = round(data.position.x, 4)
-		self.pose.position.y = round(data.position.y, 4)
-		self.robot_yaw = self._robot_angle()  
-
-    def _map_callback(self, data):
-        self.map_resolution = data.info.resolution
-        self.map_offset_x = data.info.origin.position.x
-        self.map_offset_y = data.info.origin.position.y
-        self.received_map = True
-
-    def _robot_angle(self):
-		orientation_q = self.pose.orientation
-		orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
-		(_, _, yaw) = tf.transformations.euler_from_quaternion(orientation_list)
-		return yaw  
+    def _handle_update_pose(self, data):
+        """
+        Update current pose of robot
+        """
+        try:
+            self.pose_converted = data.pose_converted
+            self.pose = data.pose
+        except:
+            print('transform not ready')
         
     def _run(self, image):
-        if self.received_map == True and self.do_blob_detection == True:
+        if self.do_blob_detection == True:
             #get frame from robo
             frame = self.bridge.compressed_imgmsg_to_cv2(image, desired_encoding='bgr8') 
             #Save Iamge for H matrix
@@ -160,10 +145,10 @@ class Camera():
         # wenn stop true
         if data.data == True:
             if self.do_tag_known_check == True:
-                next_x = self.pose.position.x + math.cos(self.robot_yaw) * 0.20
-                next_y = self.pose.position.y + math.sin(self.robot_yaw) * 0.20
-                robo_x_in_map = int(math.floor((next_x - self.map_offset_x)/self.map_resolution))
-                robo_y_in_map = int(math.floor((next_y - self.map_offset_y)/self.map_resolution))
+                next_x = self.pose_converted.x + math.cos(self.pose_converted.yaw) * 0.20
+                next_y = self.pose_converted.y + math.sin(self.pose_converted.yaw) * 0.20
+                robo_x_in_map = int(math.floor((next_x - self.map_info.origin.position.x)/self.map_info.resolution))
+                robo_y_in_map = int(math.floor((next_y - self.map_info.origin.position.y)/self.map_info.resolution))
                 check_service_response = self.tag_manager_check_service(robo_x_in_map,robo_y_in_map)
                 if check_service_response.tagKnown.data == False:
                     #------------------------------------
