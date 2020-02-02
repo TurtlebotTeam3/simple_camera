@@ -82,21 +82,21 @@ class Camera():
 
     def _set_blob_detection(self,data):
         """
-        Enable or disable the Blob detection
+        Enable or disable the blob detection.
         """
         self.do_blob_detection = data.enableBlobDetection.data
         return EnableBlobDetectionResponse()
 
     def _set_tag_known_check(self,data):
         """
-        Enable or disable the Tag Known check
+        Enable or disable the tag known check.
         """
         self.do_tag_known_check = data.enableTagKnownCheck.data
         return EnableTagKnownCheckResponse()
 
     def _handle_update_pose(self, data):
         """
-        Update current pose of robot
+        Update current pose of robot.
         """
         try:
             self.pose_converted = data.pose_converted
@@ -105,6 +105,10 @@ class Camera():
             print('transform not ready')
         
     def _run(self, image):
+        """
+        Process raspicam images and calculate
+        blob center. If blob detected stop Move_to_Goal.
+        """
         if self.do_blob_detection == True:
             #get frame from robo
             frame = self.bridge.compressed_imgmsg_to_cv2(image, desired_encoding='bgr8') 
@@ -127,9 +131,7 @@ class Camera():
                 self.blob_publisher.publish(self.blob_msg)              
                 if self.blob_in_front == False:
                     self.blob_in_front = True
-                    #------------------------------------
-                    # MoveToGoal --> STOP
-                    #------------------------------------
+                    # stop Move_to_Goal
                     self.stop_move_to_goal_publisher.publish(True)
             else:
                 self.blob_in_front = False
@@ -143,7 +145,11 @@ class Camera():
             print "map not running"
 
     def _move_to_tag(self, data):
-        # wenn stop true
+        """
+        If Move_to_Goal is stoped. Activate Move_To_Tag
+        if current position of the robot is not near a 
+        known tag.       
+        """
         if data.data == True:
             if self.do_tag_known_check == True:
                 next_x = self.pose_converted.x + math.cos(self.pose_converted.yaw) * 0.20
@@ -152,9 +158,7 @@ class Camera():
                 robo_y_in_map = int(math.floor((next_y - self.map_info.origin.position.y)/self.map_info.resolution))
                 check_service_response = self.tag_manager_check_service(robo_x_in_map,robo_y_in_map)
                 if check_service_response.tagKnown.data == False:
-                    #------------------------------------
-                    # send move to Tag
-                    #------------------------------------
+                    # start Move_to_Tag
                     msg_str = Bool()
                     msg_str = True
                     self.move_to_tag_publisher.publish(msg_str)
@@ -168,13 +172,18 @@ class Camera():
             self.stop_move_to_goal_publisher.publish(False)
         
     def _show_image(self, name, img, centroid):
-        #show images
+        """
+        Show image with or without blob centroid.
+        """
         if centroid == True:
             cv2.circle(img, (self.blob_x, self.blob_y), 20, self.COLOR, thickness=5, lineType=8, shift=0)
         cv2.imshow(name, img) 
         cv2.waitKey(1)
 
     def _calculate_mask(self, frame):
+        """
+        Calculate HSV mask.
+        """
         im = cv2.blur(frame, (3, 3))
         # convert to hsv image
         hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
@@ -186,6 +195,9 @@ class Camera():
         return mask 
     
     def _find_center(self, color, minArea):
+        """
+        Find blob centroid and return x, y of the biggest blob.
+        """
         _, contours, _ = cv2.findContours(color, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
         if len(contours) > 0:
             # find biggest blob
