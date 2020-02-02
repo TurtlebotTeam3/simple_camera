@@ -37,6 +37,7 @@ class Camera():
         self.pose = Pose()
         self.pose_converted = PoseConverted()
         
+        # set default to True --> disable and enable using service
         self.do_blob_detection = True
         self.do_tag_known_check = True
 
