@@ -49,9 +49,9 @@ class Camera():
 
         print("--- subscriber ---")
         # --- Subscribers ---
-        self.camera_subscriber = rospy.Subscriber('/raspicam_node/image/compressed', sensor_msgs.msg.CompressedImage, self._run)
-        self.pose_subscriber = rospy.Subscriber('/simple_odom_pose', CustomPose, self._handle_update_pose)
-        self.move_to_goal_is_paused_subscriber = rospy.Subscriber('/move_to_goal/paused', Bool, self._move_to_tag)
+        self.camera_subscriber = rospy.Subscriber('raspicam_node/image/compressed', sensor_msgs.msg.CompressedImage, self._run)
+        self.pose_subscriber = rospy.Subscriber('simple_odom_pose', CustomPose, self._handle_update_pose)
+        self.move_to_goal_is_paused_subscriber = rospy.Subscriber('move_to_goal/paused', Bool, self._move_to_tag)
 
         print("--- service wait ---")
         # --- Service wait ---
@@ -81,7 +81,7 @@ class Camera():
     def _setup(self):
         resolution = 0
         while resolution == 0:
-            map = rospy.wait_for_message('/map', OccupancyGrid)
+            map = rospy.wait_for_message('map', OccupancyGrid)
             self.map_info = map.info
             resolution = self.map_info.resolution
 
