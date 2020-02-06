@@ -73,12 +73,17 @@ class Camera():
         self.enable_blob_detection_service = rospy.Service('enable_blob_detection_service', EnableBlobDetection, self._set_blob_detection)
         self.enable_tag_known_check_service = rospy.Service('enable_tag_known_check_service', EnableTagKnownCheck, self._set_tag_known_check)
 
+        self._setup()
+
         print "--- CAMERA READY ---"
         rospy.spin() 
 
     def _setup(self):
-        map = rospy.wait_for_message('/map', OccupancyGrid)
-        self.map_info = map.info
+        resolution = 0
+        while resolution == 0:
+            map = rospy.wait_for_message('/map', OccupancyGrid)
+            self.map_info = map.info
+            resolution = self.map_info.resolution
 
     def _set_blob_detection(self,data):
         """
@@ -146,8 +151,8 @@ class Camera():
         # wenn stop true
         if data.data == True:
             if self.do_tag_known_check == True:
-                next_x = self.pose_converted.x + math.cos(self.pose_converted.yaw) * 0.20
-                next_y = self.pose_converted.y + math.sin(self.pose_converted.yaw) * 0.20
+                next_x = self.pose.position.x + math.cos(self.pose_converted.yaw) * 0.20
+                next_y = self.pose.position.y + math.sin(self.pose_converted.yaw) * 0.20
                 robo_x_in_map = int(math.floor((next_x - self.map_info.origin.position.x)/self.map_info.resolution))
                 robo_y_in_map = int(math.floor((next_y - self.map_info.origin.position.y)/self.map_info.resolution))
                 check_service_response = self.tag_manager_check_service(robo_x_in_map,robo_y_in_map)
