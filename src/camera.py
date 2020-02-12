@@ -193,8 +193,8 @@ class Camera():
         # convert to hsv image
         hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
         # green bounderies
-        lowerBound = np.array([50, 50, 10], np.uint8)
-        upperBound = np.array([90, 255, 255], np.uint8)
+        lowerBound = np.array([150, 100, 100], np.uint8)
+        upperBound = np.array([170, 240, 225], np.uint8)
         # mask in Range of lowerBlue and upperBlue
         mask = cv2.inRange(hsv, lowerBound, upperBound)
         return mask 
