@@ -90,6 +90,7 @@ class Camera():
         Enable or disable the blob detection.
         """
         self.do_blob_detection = data.enableBlobDetection.data
+        print('Enable blob detection: ' + str(self.do_blob_detection))
         return EnableBlobDetectionResponse()
 
     def _set_tag_known_check(self,data):
@@ -97,6 +98,7 @@ class Camera():
         Enable or disable the tag known check.
         """
         self.do_tag_known_check = data.enableTagKnownCheck.data
+        print('Enable tag known check: ' + str(self.do_tag_known_check))
         return EnableTagKnownCheckResponse()
 
     def _handle_update_pose(self, data):
