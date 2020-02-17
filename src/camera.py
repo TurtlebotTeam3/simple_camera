@@ -25,7 +25,8 @@ class Camera():
         rospy.loginfo('Cam test node started')
 
         self.COLOR = np.array([110,50,50])
-        self.minAreaSize = 1600 #6500
+        #self.minAreaSize = 1600 #For searching part 1
+        self.minAreaSize = rospy.get_param('~minAreaSize', default=1600)
         self.blob_x = 0
         self.blob_y = 0
         self.blob_in_front = False
@@ -41,24 +42,24 @@ class Camera():
         self.do_blob_detection = True
         self.do_tag_known_check = True
 
-        print("--- publisher ---")
+        rospy.loginfo("--- publisher ---")
         # --- Publishers ---
         self.blob_publisher = rospy.Publisher("blob", Blob, queue_size=10)
         self.stop_move_to_goal_publisher = rospy.Publisher('move_to_goal/pause_action', Bool, queue_size=1)
         self.move_to_tag_publisher = rospy.Publisher('move_to_tag_start_driving', Bool, queue_size=10)
 
-        print("--- subscriber ---")
+        rospy.loginfo("--- subscriber ---")
         # --- Subscribers ---
         self.camera_subscriber = rospy.Subscriber('raspicam_node/image/compressed', sensor_msgs.msg.CompressedImage, self._run)
         self.pose_subscriber = rospy.Subscriber('simple_odom_pose', CustomPose, self._handle_update_pose)
         self.move_to_goal_is_paused_subscriber = rospy.Subscriber('move_to_goal/paused', Bool, self._move_to_tag)
 
-        print("--- service wait ---")
+        rospy.loginfo("--- service wait ---")
         # --- Service wait ---
-        print("1")
+        rospy.loginfo("1")
         rospy.wait_for_service('check_tag_known')
 
-        print("--- services ---")
+        rospy.loginfo("--- services ---")
         self.tag_manager_check_service = rospy.ServiceProxy('check_tag_known', CheckTagKnown)
 
         #publish false on init 
@@ -68,14 +69,14 @@ class Camera():
         self.blob_msg.blob_y = 0
         self.blob_publisher.publish(self.blob_msg)
 
-        print("--- init service ---")
+        rospy.loginfo("--- init service ---")
         # --- init service ---
         self.enable_blob_detection_service = rospy.Service('enable_blob_detection_service', EnableBlobDetection, self._set_blob_detection)
         self.enable_tag_known_check_service = rospy.Service('enable_tag_known_check_service', EnableTagKnownCheck, self._set_tag_known_check)
 
         self._setup()
 
-        print "--- CAMERA READY ---"
+        rospy.loginfo("--- CAMERA READY ---")
         rospy.spin() 
 
     def _setup(self):
@@ -90,7 +91,7 @@ class Camera():
         Enable or disable the blob detection.
         """
         self.do_blob_detection = data.enableBlobDetection.data
-        print('Enable blob detection: ' + str(self.do_blob_detection))
+        rospy.loginfo('Enable blob detection: ' + str(self.do_blob_detection))
         return EnableBlobDetectionResponse()
 
     def _set_tag_known_check(self,data):
@@ -98,7 +99,7 @@ class Camera():
         Enable or disable the tag known check.
         """
         self.do_tag_known_check = data.enableTagKnownCheck.data
-        print('Enable tag known check: ' + str(self.do_tag_known_check))
+        rospy.loginfo('Enable tag known check: ' + str(self.do_tag_known_check))
         return EnableTagKnownCheckResponse()
 
     def _handle_update_pose(self, data):
@@ -109,7 +110,7 @@ class Camera():
             self.pose_converted = data.pose_converted
             self.pose = data.pose
         except:
-            print('transform not ready')
+            rospy.loginfo('transform not ready')
         
     def _run(self, image):
         """
@@ -149,7 +150,7 @@ class Camera():
             #show image with centroid
             #self._show_image("img1", mask, True)
         else:
-            print "map not running"
+            rospy.loginfo("map not running")
 
     def _move_to_tag(self, data):
         """

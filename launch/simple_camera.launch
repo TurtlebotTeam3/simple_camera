@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="simple_camera" type="camera.py" name="camera" output="screen">
+        <param name="minAreaSize" value="1600"/>
+    </node>
+</launch>
