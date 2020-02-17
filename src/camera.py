@@ -149,8 +149,6 @@ class Camera():
                 self.blob_publisher.publish(self.blob_msg)
             #show image with centroid
             #self._show_image("img1", mask, True)
-        else:
-            rospy.loginfo("map not running")
 
     def _move_to_tag(self, data):
         """
