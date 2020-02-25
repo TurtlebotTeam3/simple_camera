@@ -25,7 +25,6 @@ class Camera():
         rospy.loginfo('Cam test node started')
 
         self.COLOR = np.array([110,50,50])
-        #self.minAreaSize = 1600 #For searching part 1
         self.minAreaSize = rospy.get_param('~minAreaSize', default=1600)
         self.blob_x = 0
         self.blob_y = 0
@@ -80,6 +79,9 @@ class Camera():
         rospy.spin() 
 
     def _setup(self):
+        """
+        Get map meta information
+        """
         resolution = 0
         while resolution == 0:
             map = rospy.wait_for_message('map', OccupancyGrid)
@@ -152,16 +154,18 @@ class Camera():
 
     def _move_to_tag(self, data):
         """
-        If Move_to_Goal is stoped. Activate Move_To_Tag
+        If Move_to_Goal is stopped. Activate Move_To_Tag
         if current position of the robot is not near a 
         known tag.       
         """
         if data.data == True:
             if self.do_tag_known_check == True:
+                #calculate position 20cm ahead of robot to check if ther is a tag
                 next_x = self.pose.position.x + math.cos(self.pose_converted.yaw) * 0.20
                 next_y = self.pose.position.y + math.sin(self.pose_converted.yaw) * 0.20
                 robo_x_in_map = int(math.floor((next_x - self.map_info.origin.position.x)/self.map_info.resolution))
                 robo_y_in_map = int(math.floor((next_y - self.map_info.origin.position.y)/self.map_info.resolution))
+                #Do the check
                 check_service_response = self.tag_manager_check_service(robo_x_in_map,robo_y_in_map)
                 if check_service_response.tagKnown.data == False:
                     # start Move_to_Tag
@@ -218,17 +222,10 @@ class Camera():
                 M = cv2.moments(best_blob)
                 cx = int(M['m10'] / M['m00'])
                 cy = int(M['m01'] / M['m00'])
-                #cv2.circle(im, (cx, cy), 3, 255, -1)
-                #(xcenter, ycenter), (MA, ma), angle = cv2.fitEllipse(best_blob)
-                #print "maxarea: " + str(max_area)
-                #print "position: " + str((cx, cy))
                 return int(cx), int(cy)
             else:
-                #print "too small"
-                #print "maxarea: " + str(max_area)
                 return 0, 0
         else:
-            #print "not found!"
             return 0, 0
 
 if __name__ == '__main__':
